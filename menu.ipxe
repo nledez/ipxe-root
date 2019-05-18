@@ -26,7 +26,7 @@ item --gap --             ------------------------- Tools and utilities --------
 #item --key p pxelinux     Load PXELinux menu
 item --key r menu-recovery Recovery tools...
 item --key d menu-diag    Diagnostics tools...
-#item --key i menu-install Installers...
+item --key i menu-install Installers...
 item --gap --             ------------------------- Advanced options -------------------------------
 item --key c config       Configure settings
 item shell                Drop to iPXE shell
@@ -146,7 +146,7 @@ echo Booting SystemRescueCD ${sysrcd-version} x86 for ${initiator-iqn}
 #   perl -p -i -e 's{rescuecd_us}{rescuecd_no}; s{US}{NO}; s{setkmap=us}{setkmap=no}g; s{american}{norwegian};' isolinux.cfg && \
 #   cd -
 # PXELinux options, see http://syslinux.zytor.com/wiki/index.php/PXELINUX for details
-set 210:string ${boot-url}sysrcd-${sysrcd-version}-x86/isolinux/
+set 210:string ${boot-url}boot/sysrcd-${sysrcd-version}-x86/isolinux/
 set 209:string isolinux.cfg
 set filename ${210:string}pxelinux.0
 chain ${filename} || goto failed
@@ -284,18 +284,19 @@ goto start
 
 :menu-install
 menu Installers for ${initiator-iqn}
-item freedos-install      Install FreeDOS 1.1 to iSCSI
-item msdos-install        Install MS-DOS 6.22 to iSCSI
-item ubuntu-install       Install Ubuntu 12.04 ${archl} to iSCSI
-item windows7-install     Install Windows 7 to iSCSI
-item vmware-x64-install   Install VMware ESXi 5.0 (x64) to iSCSI
-item vmware-x86-install   Install VMware ESXi 3.5 (x86) to iSCSI
-item winpe                Hook Windows 7 iSCSI and boot WinPE
-item winpe-wimboot        Boot WinPE ${arch} using wimboot
-item ubuntu-installer-remote Install Ubuntu 12.04 ${archl} from public archive
-item ubuntu-install-local Install Ubuntu 12.04 ${archl} to local drive(s)
-item xenclient-install   Install XenClient 2.1 to local drive
-item windows7-hookonly   Hook Windows 7 iSCSI and boot local CD
+# item freedos-install      Install FreeDOS 1.1 to iSCSI
+# item msdos-install        Install MS-DOS 6.22 to iSCSI
+# item ubuntu-install       Install Ubuntu 18.04 ${archl} to iSCSI
+# item windows7-install     Install Windows 7 to iSCSI
+# item vmware-x64-install   Install VMware ESXi 5.0 (x64) to iSCSI
+# item vmware-x86-install   Install VMware ESXi 3.5 (x86) to iSCSI
+# item winpe                Hook Windows 7 iSCSI and boot WinPE
+# item winpe-wimboot        Boot WinPE ${arch} using wimboot
+# item ubuntu-installer-remote Install Ubuntu 18.04 ${archl} from public archive
+item ubuntu-install-local Install Ubuntu (bionic) 18.04 ${archl} to local drive(s)
+item ubuntu-install-local-wopae Install Ubuntu (bionic) 18.04 ${archl} to local drive(s) (Without PAE)
+# item xenclient-install   Install XenClient 2.1 to local drive
+# item windows7-hookonly   Hook Windows 7 iSCSI and boot local CD
 item
 item --key 0x08 back      Back to top menu...
 iseq ${menu-default} menu-install && isset ${submenu-default} && goto menu-install-timed ||
@@ -318,7 +319,7 @@ sanboot --no-describe --drive 0x00 ${sanboot-url}msdos-6.22/disk1.img || goto fa
 goto start
 
 :ubuntu-install
-echo Starting Ubuntu 12.04 ${archl} installer for ${initiator-iqn}
+echo Starting Ubuntu 18.04 (bionic) ${archl} installer for ${initiator-iqn}
 # Hook iSCSI drive
 set root-path ${base-iscsi}:${hostname}.boot.ubuntu
 #sanhook ${root-path} || goto failed
@@ -331,7 +332,7 @@ set root-path ${base-iscsi}:${hostname}.boot.ubuntu
 # inside debian-installer, unfortunately: iscsi_initiator=${initiator-iqn}
 # Hard workaround available here:
 # http://umfcloudpilot.eduserv.org.uk/entries/20299686-enable-pre-seed-or-kickstart-seeding-of-iscsi-intiator-iqn-in-ubuntu-server
-set base-url ${boot-url}ubuntu-12.04-server-${archl}
+set base-url ${boot-url}ubuntu-bionic-server-${archl}
 kernel ${base-url}/install/netboot/ubuntu-installer/${archl}/linux
 initrd ${base-url}/install/netboot/ubuntu-installer/${archl}/initrd.gz
 imgargs linux auto=true fb=false url=${base-url}/./preseed.cfg DEBCONF_DEBUG=5 netcfg/get_hostname=${hostname} partman-iscsi/login/address=${iscsi-server} partman-iscsi/login/targets=${base-iqn}:${hostname}.boot.ubuntu partman-iscsi/login/username=${username} partman-iscsi/login/password=${password}
@@ -339,11 +340,22 @@ boot || goto failed
 goto start
 
 :ubuntu-install-local
-echo Starting Ubuntu 12.04 ${archl} local installer for ${initiator-iqn}
-set base-url ${boot-url}ubuntu-12.04-server-${archl}
+echo Starting Ubuntu 18.04 (bionic) ${archl} local installer for ${initiator-iqn}
+set base-url ${boot-url}ubuntu-bionic-server-${archl}
 kernel ${base-url}/install/netboot/ubuntu-installer/${archl}/linux
 initrd ${base-url}/install/netboot/ubuntu-installer/${archl}/initrd.gz
-imgargs linux auto=true fb=false url=${base-url}/./preseed.cfg
+# imgargs linux auto=true fb=false url=${base-url}/./preseed.cfg
+imgargs linux vga=788
+boot || goto failed
+goto start
+
+:ubuntu-install-local-wopae
+echo Starting Ubuntu 18.04 (bionic) ${archl} local installer for ${initiator-iqn}
+set base-url ${boot-url}ubuntu-bionic-server-${archl}
+kernel ${base-url}/install/netboot/ubuntu-installer/${archl}/linux
+initrd ${base-url}/install/netboot/ubuntu-installer/${archl}/initrd.gz
+# imgargs linux auto=true fb=false url=${base-url}/./preseed.cfg
+imgargs linux vga=788 forcepae -- forcepae
 boot || goto failed
 goto start
 
@@ -443,7 +455,7 @@ boot || goto failed
 goto start
 
 :ubuntu-installer-remote
-echo Starting Ubuntu 12.04 ${archl} installer for ${initiator-iqn}
+echo Starting Ubuntu 18.04 (bionic) ${archl} installer for ${initiator-iqn}
 set base-url http://no.archive.ubuntu.com/ubuntu/dists/precise/main/installer-${archl}/current/images/netboot/ubuntu-installer/${archl}
 kernel ${base-url}/linux
 initrd ${base-url}/initrd.gz
@@ -482,7 +494,7 @@ goto start
 :menu-live
 menu Live environments for ${initiator-iqn}
 item openelec-generic-live     Boot OpenELEC Generic ${openelec-version} ${archl}
-item ubuntu-live-1204          Boot Ubuntu LiveCD 12.04 ${archl}
+item ubuntu-live-1204          Boot Ubuntu LiveCD 18.04 (bionic) ${archl}
 item slitaz-live               Boot SliTaz 4.0 LiveCD
 item smartos                   Boot SmartOS
 item smartos-pre-ept           Boot SmartOS (pre-ept)
@@ -513,8 +525,8 @@ choose --timeout ${submenu-timeout} --default ${submenu-default} selected && got
 
 # :ubuntu-live-1204
 # # See http://manpages.ubuntu.com/manpages/precise/man7/casper.7.html for casper cmdline details
-# echo Booting Ubuntu Live 12.04 ${archl} for ${initiator-iqn}
-# set base-url ubuntu-12.04-dvd-${archl}
+# echo Booting Ubuntu Live 18.04 ${archl} for ${initiator-iqn}
+# set base-url ubuntu-18.04-dvd-${archl}
 # kernel ${base-url}/casper/vmlinuz
 # initrd ${base-url}/casper/initrd.lz
 # imgargs vmlinuz root=/dev/nfs boot=casper netboot=nfs nfsroot=${nfs-server}:${nfs-root}${base-url} locale=en_US.UTF-8 keyboard-configuration/layoutcode=no mirror/country=NO

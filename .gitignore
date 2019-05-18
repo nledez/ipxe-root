@@ -1,1 +1,4 @@
 boot.ipxe.cfg
+boot/
+ipxe/
+ubuntu-*-server-*
